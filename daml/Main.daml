@@ -1,0 +1,37 @@
+module Main where
+
+template Order
+    with 
+        customer : Party 
+        restaurant : Party 
+        shoppingCart : [Text] 
+        orderStatus : Text
+        diningMode : Text
+        discount : Decimal
+    where 
+        signatory customer, restaurant
+
+        
+
+
+
+template Item
+    with 
+        customer: Party 
+        restaurant : Party 
+        name : Text
+        inventory : Int
+        price : Decimal
+    where 
+        signatory restaurant
+        observer customer 
+
+template Discount
+    with 
+        customer : Party 
+        restaurant : Party 
+        discountCode : Text
+        discountPercentage : Decimal
+    where
+        signatory restaurant 
+        observer customer
