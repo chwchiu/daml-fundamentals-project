@@ -1,0 +1,33 @@
+module Test where
+
+import Setup
+import Main
+import Daml.Script
+
+successfulOrderScenarioScript: Script() 
+successfulOrderScenarioScript = script do
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "Alice" "McDonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    
+
+    
+
+    
+    return ()

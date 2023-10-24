@@ -1,0 +1,92 @@
+module Setup where
+
+import Main
+import Daml.Script
+
+data TestParties = TestParties with 
+    customer : Party 
+    restaurant : Party 
+
+setupUsers : Text -> Text -> Script TestParties
+setupUsers customer restaurant = do 
+    -- 1. Allocate parties with given display name
+    customerParty <- allocatePartyWithHint customer (PartyIdHint "C")
+    restaurantParty <- allocatePartyWithHint restaurant (PartyIdHint "R") 
+
+    -- 2. Construct userIds from text
+    customerId <- validateUserId customer
+    restaurantId <- validateUserId restaurant
+
+    -- 3. Create users with given rights
+    createUser (User customerId (Some customerParty)) [CanActAs customerParty]
+    createUser (User restaurantId (Some restaurantParty)) [CanActAs restaurantParty]
+
+    return (TestParties with 
+        customer = customerParty
+        restaurant = restaurantParty)
+
+setupEmptyOrder : Party -> Party -> Script (ContractId Order)
+setupEmptyOrder customer restaurant = do
+    let orderInfo = OrderInfo with 
+            shoppingCart = []
+            orderStatus = ""
+            diningMode = ""
+            discount = 0.0
+
+    submitMulti [customer, restaurant][] do 
+        createCmd Order with 
+            customer
+            restaurant
+            orderInfo
+
+data MenuInventoryItem = MenuInventoryItem with
+    item : MealItem
+    cost : Decimal
+
+data DiscountInfo = DiscountInfo with 
+    discountCode : Text
+    discountPercentage : Decimal 
+
+setupInventory : Party -> Party -> Script [ContractId Item]
+setupInventory customer restaurant = do 
+    let 
+        mealItem1 = MealItem with 
+            name = "Burger"
+            amount = 3
+        mealItem2 = MealItem with 
+            name = "Fries"
+            amount = 4
+        mealItem3 = MealItem with 
+            name = "Soda"
+            amount = 2
+        inventoryItem1 = MenuInventoryItem with
+            item = mealItem1
+            cost = 4.99
+        inventoryItem2 = MenuInventoryItem with
+            item = mealItem2
+            cost = 1.99
+        inventoryItem3 = MenuInventoryItem with
+            item = mealItem3
+            cost = 2.99
+            
+        mealItemList = [inventoryItem1, inventoryItem2, inventoryItem3]
+    
+    mapA (\inventoryItem -> (submit restaurant do createCmd Item with customer, restaurant, itemInfo = inventoryItem.item, price = inventoryItem.cost)) mealItemList
+
+
+setupDiscounts : Party -> Party -> Script [ContractId Discount]
+setupDiscounts customer restaurant = do 
+    let 
+        discount1 = DiscountInfo with 
+            discountCode = "SPRING2023"
+            discountPercentage = 0.3
+        discount2 = DiscountInfo with 
+            discountCode = "CHRISTMAS"
+            discountPercentage = 0.5
+        discount3 = DiscountInfo with 
+            discountCode = "BACK2SCHOOL"
+            discountPercentage = 0.3
+        discountList = [discount1, discount2, discount3]
+    mapA (\discountItem -> (submit restaurant do createCmd Discount with customer, restaurant, discountCode = discountItem.discountCode, discountPercentage = discountItem.discountPercentage)) discountList 
+
+

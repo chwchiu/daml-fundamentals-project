@@ -16,7 +16,7 @@ Proposer can create a ProjectProposal contract. Evaluator can exercise ProposerA
 ### II. Workflow
   1. Customer creates an Order contract     
   2. Restaurant exercises StartOrder if they want to take an order from the customer.
-  3. Customer exercises AddItems with a list of (item, amount) they want to order. The items that exist with a valid amount are added.
+  3. Customer exercises AddItems with a list of MealItem : (item, amount) they want to order. The items that exist with a valid amount are added.
   4. Customer exercises ApplyDiscounts with a code. The discount is applied if a valid code with the key exists. 
   5. Customer exercises PayOrder with an amount. Rejected if not enough money, accepted if enough. 
   6. Restaurant exercises ServeOrder. 

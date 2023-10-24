@@ -1,30 +1,72 @@
 module Main where
 
+data MealItem = MealItem with 
+    name : Text
+    amount : Int
+        deriving (Eq, Show)
+
+data OrderInfo = OrderInfo with 
+    shoppingCart : [MealItem] 
+    orderStatus : Text
+    diningMode : Text
+    discount : Decimal
+        deriving (Show, Eq)
+
 template Order
     with 
         customer : Party 
         restaurant : Party 
-        shoppingCart : [Text] 
-        orderStatus : Text
-        diningMode : Text
-        discount : Decimal
+        orderInfo : OrderInfo
     where 
         signatory customer, restaurant
 
+        choice StartOrder : ContractId Order
+            controller customer
+                do 
+                    let newOrderInfo = OrderInfo with 
+                            shoppingCart = orderInfo.shoppingCart
+                            orderStatus = "Awaiting"
+                            diningMode = orderInfo.diningMode
+                            discount = orderInfo.discount
+
+                    create Order with 
+                        orderInfo = newOrderInfo
+                        ..
+
+        choice TakeOrder : ContractId Order
+            controller restaurant 
+                do
+                    let newOrderInfo = OrderInfo with
+                            shoppingCart = orderInfo.shoppingCart
+                            orderStatus = "Ordering"
+                            diningMode = orderInfo.diningMode
+                            discount = orderInfo.discount
+
+                    create Order with 
+                        orderInfo = newOrderInfo
+                        ..
         
+        choice AddItems : [(ContractId Item, Item)]
+            with 
+                mealItemList : [MealItem]
+            controller customer
+                do  
+                    mapA (\mealItem -> (fetchByKey @Item (restaurant, mealItem.name))) mealItemList 
 
 
 
 template Item
     with 
-        customer: Party 
+        customer : Party
         restaurant : Party 
-        name : Text
-        inventory : Int
+        itemInfo : MealItem
         price : Decimal
     where 
         signatory restaurant
-        observer customer 
+        observer customer
+
+        key (restaurant, itemInfo.name) : (Party, Text)
+        maintainer key._1
 
 template Discount
     with 
