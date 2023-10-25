@@ -5,8 +5,9 @@ import Main
 import Daml.Script
 
 -- Happy Path Testing with no discounts and 1 item
-noDiscountOneItemTestScript: Script() 
-noDiscountOneItemTestScript = script do
+-- Expected Result:  Order Status of Order contract should be "Completed"
+noDiscountOneItem: Script() 
+noDiscountOneItem = script do
     -- Intialization of contract, setup users and empty contract
     testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
     aliceOrderId <- setupEmptyOrder customer restaurant
@@ -52,8 +53,9 @@ noDiscountOneItemTestScript = script do
     return ()
 
 -- Happy Path Testing with 1 discount and 3 items
-oneDiscountThreeItemsTestScript: Script() 
-oneDiscountThreeItemsTestScript = script do
+-- Expected Result:  Order Status of Order contract should be "Completed"
+oneDiscountThreeItems: Script() 
+oneDiscountThreeItems = script do
     -- Intialization of contract, setup users and empty contract
     testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
     aliceOrderId <- setupEmptyOrder customer restaurant
@@ -109,8 +111,9 @@ oneDiscountThreeItemsTestScript = script do
     return ()
 
 -- Happy Path Testing full workflow scenario
-fullWorkFlowTestScript: Script() 
-fullWorkFlowTestScript = script do
+-- Expected Result:  Order Status of Order contract should be "Completed"
+fullWorkFlow: Script() 
+fullWorkFlow = script do
     -- Intialization of contract, setup users and empty contract
     testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
     aliceOrderId <- setupEmptyOrder customer restaurant
@@ -166,14 +169,229 @@ fullWorkFlowTestScript = script do
     return ()
 
 -- Unhappy Path Testing customer tries to order without going through the first two steps of the workflow
+-- Expected Result: An exception should be raised by an assertion
+orderingWithoutStartingOrder : Script ()
+orderingWithoutStartingOrder = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        orderList = [burger, soda]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    return ()
 
 -- Unhappy Path Testing with no dining mode
+-- Expected Result: An exception should be raised by an assertion. 
+orderingWithoutDiningMode : Script ()
+orderingWithoutDiningMode = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
 
--- Unhappy Path Testing with invalid discounts and items
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
 
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        orderList = [burger, soda]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        springDiscount = "SPRING2023"
+        schoolDiscount = "BACK2SCHOOL"
+        discountList = [springDiscount, schoolDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+    
+    -- Customer then tries to pay for the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+
+    return ()
+
+-- Unhappy Path Testing with invalid items
+-- Expected Result: Shopping cart should remain empty
+orderingWithInvalidItems : Script ()
+orderingWithInvalidItems = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        chips = MealItem with name = "Chips", amount = 1
+        fanta = MealItem with name = "Fanta", amount = 3
+        orderList = [chips, fanta]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    return ()
+
+-- Unhappy Path Testing with invalid discounts'
+-- Expected Result: Discount percentage should remain as 1.0
+orderingWithInvalidDiscounts : Script ()
+orderingWithInvalidDiscounts = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        fries = MealItem with name ="Fries", amount = 5
+        orderList = [burger, soda, fries]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        christmasDiscount = "MERRYCHRISTMAS"
+        schoolDiscount = "BACK2SKOOL"
+        discountList = [christmasDiscount, schoolDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+
+    return ()
+    
 -- Unhappy Path Testing with invalid amount of money
+-- Expected Result: An exception should be raised by an assertion. 
+orderingWithoutSufficientMoney : Script ()
+orderingWithoutSufficientMoney = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        fries = MealItem with name ="Fries", amount = 5
+        orderList = [burger, soda, fries]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        christmasDiscount = "CHRISTMAS"
+        discountList = [christmasDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+    
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 2.0
+    
+    return ()
 
 -- Unhappy Path Testing with empty shopping cart
+-- Expected Result: An exception should be raised by an assertion. 
+orderingWithoutItemsInShoppingCart : Script ()
+orderingWithoutItemsInShoppingCart = script do 
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+
+    return ()
 
 -- Unhappy Path Testing with nonconsuming choice CheckOrderInfo
 restaurantAddsItemsAndDiscountsTestScript: Script() 
