@@ -4,10 +4,11 @@ import Setup
 import Main
 import Daml.Script
 
-successfulOrderScenarioScript: Script() 
-successfulOrderScenarioScript = script do
+-- Happy Path Testing with no discounts and 1 item
+noDiscountOneItemTestScript: Script() 
+noDiscountOneItemTestScript = script do
     -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "Alice" "McDonalds"
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
     aliceOrderId <- setupEmptyOrder customer restaurant
 
     -- Initialization of Menu Items
@@ -25,9 +26,203 @@ successfulOrderScenarioScript = script do
         exerciseCmd aliceOrderId TakeOrder
 
     -- Customer begins by adding items to the shopping cart
-    
+    let 
+        burger = MealItem with name = "Burger", amount = 5
+        orderList = [burger]
 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
     
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Dine In")
 
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
     
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId ServeOrder
+
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Happy Path Testing with 1 discount and 3 items
+oneDiscountThreeItemsTestScript: Script() 
+oneDiscountThreeItemsTestScript = script do
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        fries = MealItem with name ="Fries", amount = 5
+        orderList = [burger, soda, fries]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        christmasDiscount = "CHRISTMAS"
+        discountList = [christmasDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+    
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+    
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId ServeOrder
+
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Happy Path Testing full workflow scenario
+fullWorkFlowTestScript: Script() 
+fullWorkFlowTestScript = script do
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        orderList = [burger, soda]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        springDiscount = "SPRING2023"
+        schoolDiscount = "BACK2SCHOOL"
+        discountList = [springDiscount, schoolDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+    
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+    
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId ServeOrder
+
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Unhappy Path Testing customer tries to order without going through the first two steps of the workflow
+
+-- Unhappy Path Testing with no dining mode
+
+-- Unhappy Path Testing with invalid discounts and items
+
+-- Unhappy Path Testing with invalid amount of money
+
+-- Unhappy Path Testing with empty shopping cart
+
+-- Unhappy Path Testing with nonconsuming choice CheckOrderInfo
+restaurantAddsItemsAndDiscountsTestScript: Script() 
+restaurantAddsItemsAndDiscountsTestScript = script do
+    -- Intialization of contract, setup users and empty contract
+    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Check if you can submit order, fail because shopping cart is empty 
+    result <- submit restaurant do 
+        exerciseCmd aliceOrderId CheckOrderInfo
+    debug $ result
+
+    -- Customer adds item to cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        soda = MealItem with name = "Soda", amount = 3
+        orderList = [burger, soda]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+    
+    -- Check if you can submit order, fail because no dining mode
+    result <- submit restaurant do 
+        exerciseCmd aliceOrderId CheckOrderInfo
+    debug $ result
+
+    -- Customer adds dining mode
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
+
+    -- Check if you can submit order
+    result <- submit restaurant do 
+        exerciseCmd aliceOrderId CheckOrderInfo
+    debug $ result
+
+
     return ()

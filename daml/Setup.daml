@@ -29,7 +29,7 @@ setupEmptyOrder : Party -> Party -> Script (ContractId Order)
 setupEmptyOrder customer restaurant = do
     let orderInfo = OrderInfo with 
             shoppingCart = []
-            orderStatus = ""
+            orderStatus = "Not Started"
             diningMode = ""
             discount = 0.0
 
@@ -71,7 +71,7 @@ setupInventory customer restaurant = do
             
         mealItemList = [inventoryItem1, inventoryItem2, inventoryItem3]
     
-    mapA (\inventoryItem -> (submit restaurant do createCmd Item with customer, restaurant, itemInfo = inventoryItem.item, price = inventoryItem.cost)) mealItemList
+    mapA (\inventoryItem -> (submit restaurant do createCmd Item with customer, restaurant, itemName = inventoryItem.item.name, price = inventoryItem.cost)) mealItemList
 
 
 setupDiscounts : Party -> Party -> Script [ContractId Discount]
@@ -88,5 +88,3 @@ setupDiscounts customer restaurant = do
             discountPercentage = 0.3
         discountList = [discount1, discount2, discount3]
     mapA (\discountItem -> (submit restaurant do createCmd Discount with customer, restaurant, discountCode = discountItem.discountCode, discountPercentage = discountItem.discountPercentage)) discountList 
-
-

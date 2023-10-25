@@ -1,5 +1,9 @@
 module Main where
 
+import DA.Optional
+import DA.Foldable
+import DA.List
+
 data MealItem = MealItem with 
     name : Text
     amount : Int
@@ -20,9 +24,13 @@ template Order
     where 
         signatory customer, restaurant
 
+        -- StartOrder will change the status fo the order to "Awaiting", which is used when the customer is ready to begin ordering
         choice StartOrder : ContractId Order
             controller customer
-                do 
+                do
+                    -- Assert that the status of the order is Not Started
+                    assertMsg "The order status must be Not Started" (orderInfo.orderStatus == "Not Started")
+
                     let newOrderInfo = OrderInfo with 
                             shoppingCart = orderInfo.shoppingCart
                             orderStatus = "Awaiting"
@@ -33,9 +41,13 @@ template Order
                         orderInfo = newOrderInfo
                         ..
 
+        -- TakeOrder will change the status of the order to "Order", which is used when the restaurant is ready to take the customer's order
         choice TakeOrder : ContractId Order
             controller restaurant 
                 do
+                    -- Assert that the status of the order is Awaiting
+                    assertMsg "The order status must be Awaiting" (orderInfo.orderStatus == "Awaiting")
+
                     let newOrderInfo = OrderInfo with
                             shoppingCart = orderInfo.shoppingCart
                             orderStatus = "Ordering"
@@ -46,27 +58,199 @@ template Order
                         orderInfo = newOrderInfo
                         ..
         
-        choice AddItems : [(ContractId Item, Item)]
+        -- AddItems will add items that exist in the menu to the shopping cart, otherwise it will leave it out. 
+        choice AddItems : ContractId Order
             with 
                 mealItemList : [MealItem]
             controller customer
                 do  
-                    mapA (\mealItem -> (fetchByKey @Item (restaurant, mealItem.name))) mealItemList 
+                    -- Assert that the status of the order is Ordering
+                    assertMsg "The order status must be Ordering" (orderInfo.orderStatus == "Ordering")
+                    
+                    -- Assert that there is at least 1 or more items in the shopping cart
+                    assertMsg "There has to be at least 1 item in the shopping cart" (DA.List.length mealItemList > 0)
+
+                    -- Assert that all items have an amount of more than 1
+                    mapA_ (\item -> assertMsg "There cannot be an amount of less than 1." (item.amount > 0)) mealItemList
 
 
+                    -- Fetch all of the availabe meal items, none if they don't exist
+                    validMealItems : [Optional (ContractId Item)] <- mapA (\mealItem ->lookupByKey @Item (restaurant, mealItem.name)) mealItemList
+
+                    let 
+                      -- Code that filters out the items that don't exist
+                      intermediateMealItemList = zip mealItemList validMealItems
+                      filterIntermediateMealitemList : [(MealItem, Optional (ContractId Item))]= filter (\item -> isSome(item._2)) intermediateMealItemList
+                      newShoppingCart = map fst filterIntermediateMealitemList
+
+                    -- Create a contract with items that exist in the shopping cart
+                      newOrderInfo = OrderInfo with 
+                                shoppingCart = newShoppingCart
+                                orderStatus = orderInfo.orderStatus
+                                diningMode = orderInfo.diningMode
+                                discount = orderInfo.discount
+
+                    create Order with 
+                        orderInfo = newOrderInfo
+                        ..
+        
+        -- AddDiscount will add discounts that exist in the menu to the shopping cart, otherwise it will leave it out. 
+        -- Note: Can add multiple discount. Ex: discounts [a, b, c], final discount will be a*b*c
+        choice AddDiscount : ContractId Order
+            with 
+                discountList : [Text]
+            controller customer
+                do  
+                    -- Assert that the status of the order is Ordering
+                    assertMsg "The order status must be Ordering" (orderInfo.orderStatus == "Ordering")
+                    
+                    -- Fetch all of the availabe meal items, none if they don't exist
+                    validDiscountCodes : [Optional (ContractId Discount)] <- mapA (\discountCode ->lookupByKey @Discount (restaurant, discountCode)) discountList
+
+                    let filterIntermediateDiscountist = filter (\item -> isSome(item)) validDiscountCodes
+                    
+                    validDiscountList <- mapA (\contractId -> fetch (fromSome(contractId))) filterIntermediateDiscountist
+                    
+                    let 
+                      -- Getting the final discount percentage with all the coupons applied
+                      finalDiscount = DA.Foldable.foldl (\acc discountItem -> acc * discountItem.discountPercentage) 1.0 validDiscountList
+
+                      -- Create a contract with items that exist in the shopping cart
+                      newOrderInfo = OrderInfo with 
+                              shoppingCart = orderInfo.shoppingCart
+                              orderStatus = orderInfo.orderStatus
+                              diningMode = orderInfo.diningMode
+                              discount = finalDiscount
+
+                    create Order with 
+                        orderInfo = newOrderInfo
+                        ..
+        
+        -- AddDiningMode will add the dining mode to the orderInfo. 
+        choice AddDiningMode : ContractId Order
+          with 
+            diningMode : Text
+          controller customer
+            do 
+              -- Assert that the status of the order is Ordering
+              assertMsg "The order status must be Ordering" (orderInfo.orderStatus == "Ordering")
+
+              -- Assert that the status of the order is Ordering
+              assertMsg "Invalid dining mode. You can only \"Dine in\" or \"Take Out\"" (diningMode == "Take Out" || diningMode == "Dine In")
+
+              -- Create a contract with items that exist in the shopping cart
+              let newOrderInfo = OrderInfo with 
+                      shoppingCart = orderInfo.shoppingCart
+                      orderStatus = orderInfo.orderStatus
+                      diningMode = diningMode
+                      discount = orderInfo.discount
+
+              create Order with 
+                  orderInfo = newOrderInfo
+                  ..
+
+        -- PayOrder will check if the amount paid by the customer is enough for the current order in the shopping cart
+        choice PayOrder : ContractId Order
+          with 
+            amount : Decimal
+          controller customer 
+            do 
+              -- Assert that the status of the order is Ordering
+              assertMsg "The order status must be Ordering" (orderInfo.orderStatus == "Ordering")
+
+              -- Assert that there is at least one item in the shopping cart
+              assertMsg "There has to be at least 1 item in the shopping cart" (DA.List.length orderInfo.shoppingCart > 0)
+
+              -- Assert that there is at least one item in the shopping cart
+              assertMsg "Your dining mode cannot be empty" (orderInfo.diningMode /= "")
+              
+              -- Fetch all of the shopping cart item information
+              shoppingCartItemContracts : [Optional (ContractId Item)] <- mapA (\shoppingCartItem ->lookupByKey @Item (restaurant, shoppingCartItem.name)) orderInfo.shoppingCart
+              mealInformation <- mapA (\contractId -> fetch (fromSome(contractId))) shoppingCartItemContracts
+              let 
+                allInfo = zip orderInfo.shoppingCart mealInformation
+                finalCost = DA.Foldable.foldl (\acc mealItem -> acc + (intToDecimal(mealItem._1.amount) * mealItem._2.price)) 0.0 allInfo
+                discountedCost = finalCost * orderInfo.discount
+                errorMsg = "Your total bill is " <> show discountedCost <> ". You only paid " <> show amount <> "."
+
+              -- Assert that the customer has paid enough for the order
+              assertMsg  errorMsg (discountedCost < amount)
+
+              let 
+                -- Create a contract with items that exist in the shopping cart
+                newOrderInfo = OrderInfo with 
+                        shoppingCart = orderInfo.shoppingCart
+                        orderStatus = "Paid"
+                        diningMode = orderInfo.diningMode
+                        discount = orderInfo.discount
+
+              create Order with 
+                  orderInfo = newOrderInfo
+                  ..
+        
+        -- ServeOrder will change the status fo the order to "Served", which is used when the restaurant serves the order to the customer
+        choice ServeOrder : ContractId Order
+          controller restaurant 
+            do 
+              -- Assert that the status of the order is Ordering
+              assertMsg "The order status must be Paid" (orderInfo.orderStatus == "Paid")
+
+              let newOrderInfo = OrderInfo with
+                          shoppingCart = orderInfo.shoppingCart
+                          orderStatus = "Served"
+                          diningMode = orderInfo.diningMode
+                          discount = orderInfo.discount
+
+              create Order with 
+                  orderInfo = newOrderInfo
+                  ..
+        
+        -- PickupOrder will change the status fo the order to "Completed", which is used when the customer picks up the order
+        choice PickUpOrder : ContractId Order
+          controller restaurant 
+            do 
+              -- Assert that the status of the order is Ordering
+              assertMsg "The order status must be Served" (orderInfo.orderStatus == "Served")
+
+              let newOrderInfo = OrderInfo with
+                          shoppingCart = orderInfo.shoppingCart
+                          orderStatus = "Completed"
+                          diningMode = orderInfo.diningMode
+                          discount = orderInfo.discount
+
+              create Order with 
+                  orderInfo = newOrderInfo
+                  ..
+
+        -- CheckOrderInfo is used to check if the order is correct and there are no errors
+        nonconsuming choice CheckOrderInfo : Either Text (ContractId Order)
+          controller restaurant 
+            do 
+              if (DA.List.length orderInfo.shoppingCart < 1) then 
+                return (Left "Your shopping cart is empty")
+              else if (orderInfo.diningMode /= "Take Out" && orderInfo.diningMode /= "Dine In") then 
+                return (Left "Your dining mode needs to be either \"Take Out\" or \"Dine In\".")
+              else 
+                return (Right self)
+              
 
 template Item
     with 
         customer : Party
         restaurant : Party 
-        itemInfo : MealItem
+        itemName : Text
         price : Decimal
     where 
         signatory restaurant
         observer customer
 
-        key (restaurant, itemInfo.name) : (Party, Text)
+        key (restaurant, itemName) : (Party, Text)
         maintainer key._1
+
+        
+              
+
+
 
 template Discount
     with 
@@ -77,3 +261,6 @@ template Discount
     where
         signatory restaurant 
         observer customer
+
+        key(restaurant, discountCode) : (Party, Text)
+        maintainer key._1
