@@ -2,9 +2,8 @@ sdk-version: 2.7.4
 name: fast-food-restaurant
 source: daml
 version: 0.0.1
+init-script : Setup:setupUsers
 dependencies:
   - daml-prim
   - daml-stdlib
   - daml-script
-sandbox-options:
-  - --wall-clock-time
