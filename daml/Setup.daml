@@ -7,23 +7,46 @@ data TestParties = TestParties with
     customer : Party 
     restaurant : Party 
 
-setupUsers : Text -> Text -> Script TestParties
-setupUsers customer restaurant = do 
-    -- 1. Allocate parties with given display name
-    customerParty <- allocatePartyWithHint customer (PartyIdHint "C")
-    restaurantParty <- allocatePartyWithHint restaurant (PartyIdHint "R") 
+setupTestParties : Script TestParties
+setupTestParties = script do
+    -- 1. Allocate parties with the given display name
+    customerParty <- allocatePartyWithHint "Alice" (PartyIdHint "Customer")
+    restaurantParty <- allocatePartyWithHint "McDonalds" (PartyIdHint "Restaurant") 
 
     -- 2. Construct userIds from text
-    customerId <- validateUserId customer
-    restaurantId <- validateUserId restaurant
+    customerId <- validateUserId "Alice"
+    restaurantId <- validateUserId "McDonalds"
 
     -- 3. Create users with given rights
     createUser (User customerId (Some customerParty)) [CanActAs customerParty]
     createUser (User restaurantId (Some restaurantParty)) [CanActAs restaurantParty]
-
     return (TestParties with 
         customer = customerParty
         restaurant = restaurantParty)
+
+
+setupUsers : Script (ContractId Order)
+setupUsers = script do 
+    testParties@TestParties{customer, restaurant} <- setupTestParties
+
+    -- 4. Set up Inventory 
+    inventoryList <- setupInventory customer restaurant
+
+    -- 5. Set up Discounts
+    discountsList <- setupDiscounts customer restaurant
+
+    let orderInfo = OrderInfo with 
+            shoppingCart = []
+            orderStatus = "Not Started"
+            diningMode = ""
+            discount = 1.0
+
+    submitMulti [customer, restaurant][] do 
+        createCmd Order with 
+            customer
+            restaurant
+            orderInfo
+
 
 setupEmptyOrder : Party -> Party -> Script (ContractId Order)
 setupEmptyOrder customer restaurant = do
@@ -88,3 +111,16 @@ setupDiscounts customer restaurant = do
             discountPercentage = 0.3
         discountList = [discount1, discount2, discount3]
     mapA (\discountItem -> (submit restaurant do createCmd Discount with customer, restaurant, discountCode = discountItem.discountCode, discountPercentage = discountItem.discountPercentage)) discountList 
+
+setupTestingEnvironment : Script (TestParties, ContractId Order, [ContractId Item], [ContractId Discount])
+setupTestingEnvironment = script do 
+    testParties@TestParties{..} <- setupTestParties
+    aliceOrderId <- setupEmptyOrder customer restaurant
+
+    -- Initialization of Menu Items
+    menuItems <- setupInventory customer restaurant
+    
+    -- Initialization of Discounts
+    discounts <- setupDiscounts customer restaurant 
+
+    return (testParties, aliceOrderId, menuItems, discounts)

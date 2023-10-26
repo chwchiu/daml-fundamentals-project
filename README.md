@@ -14,13 +14,14 @@ Proposer can create a ProjectProposal contract. Evaluator can exercise ProposerA
 
 
 ### II. Workflow
-  1. Customer creates an Order contract     
-  2. Restaurant exercises StartOrder if they want to take an order from the customer.
-  3. Customer exercises AddItems with a list of MealItem : (item, amount) they want to order. The items that exist with a valid amount are added.
-  4. Customer exercises ApplyDiscounts with a code. The discount is applied if a valid code with the key exists. 
-  5. Customer exercises PayOrder with an amount. Rejected if not enough money, accepted if enough. 
-  6. Restaurant exercises ServeOrder. 
-  7. Customer exercises PickUp order. Error if restaurant has not served it, fine otherwise. 
+  1. Customer creates an Order contract
+  2. Customer exercises StartOrder if they want to start ordering at the restaurant.
+  3. Restaurant exercises StartOrder if they want to take an order from the customer.
+  4. Customer exercises AddItems with a list of MealItem : (item, amount) they want to order. The items that exist with a valid amount are added.
+  5. Customer exercises ApplyDiscounts with a code. The discount is applied if a valid code with the key exists. 
+  6. Customer exercises PayOrder with an amount. Rejected if not enough money, accepted if enough. 
+  7. Restaurant exercises ServeOrder. 
+  8. Customer exercises PickUp order. Error if restaurant has not served it, fine otherwise. 
 
 ### III. Challenge(s)
 * `controller ... can` syntax causes warning in Daml 2.0+. The code itself does not cause any issues/errors in 2.5.0 but according to the warning, the syntax will be deprecated in the future versions of Daml. More information [here](https://docs.daml.com/daml/reference/choices.html#daml-ref-controller-can-deprecation).

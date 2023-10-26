@@ -207,7 +207,7 @@ template Order
         
         -- PickupOrder will change the status fo the order to "Completed", which is used when the customer picks up the order
         choice PickUpOrder : ContractId Order
-          controller restaurant 
+          controller customer 
             do 
               -- Assert that the status of the order is Ordering
               assertMsg "The order status must be Served" (orderInfo.orderStatus == "Served")

@@ -8,15 +8,8 @@ import Daml.Script
 -- Expected Result:  Order Status of Order contract should be "Completed"
 noDiscountOneItem: Script() 
 noDiscountOneItem = script do
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -46,8 +39,8 @@ noDiscountOneItem = script do
     aliceOrderId <- submit restaurant do 
         exerciseCmd aliceOrderId ServeOrder
 
-    -- Restaurant serves order
-    aliceOrderId <- submit restaurant do 
+    -- Customer picks up order
+    aliceOrderId <- submit customer do 
         exerciseCmd aliceOrderId PickUpOrder
 
     return ()
@@ -56,16 +49,9 @@ noDiscountOneItem = script do
 -- Expected Result:  Order Status of Order contract should be "Completed"
 oneDiscountThreeItems: Script() 
 oneDiscountThreeItems = script do
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
 
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
-    
     -- Customer starts the order
     aliceOrderId <- submit customer do 
         exerciseCmd aliceOrderId StartOrder
@@ -104,8 +90,8 @@ oneDiscountThreeItems = script do
     aliceOrderId <- submit restaurant do 
         exerciseCmd aliceOrderId ServeOrder
 
-    -- Restaurant serves order
-    aliceOrderId <- submit restaurant do 
+    -- Customer picks up order
+    aliceOrderId <- submit customer do 
         exerciseCmd aliceOrderId PickUpOrder
 
     return ()
@@ -114,15 +100,8 @@ oneDiscountThreeItems = script do
 -- Expected Result:  Order Status of Order contract should be "Completed"
 fullWorkFlow: Script() 
 fullWorkFlow = script do
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -162,8 +141,8 @@ fullWorkFlow = script do
     aliceOrderId <- submit restaurant do 
         exerciseCmd aliceOrderId ServeOrder
 
-    -- Restaurant serves order
-    aliceOrderId <- submit restaurant do 
+    -- Customer picks up order
+    aliceOrderId <- submit customer do 
         exerciseCmd aliceOrderId PickUpOrder
 
     return ()
@@ -172,15 +151,8 @@ fullWorkFlow = script do
 -- Expected Result: An exception should be raised by an assertion
 orderingWithoutStartingOrder : Script ()
 orderingWithoutStartingOrder = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
 
     -- Customer begins by adding items to the shopping cart
     let 
@@ -197,15 +169,8 @@ orderingWithoutStartingOrder = script do
 -- Expected Result: An exception should be raised by an assertion. 
 orderingWithoutDiningMode : Script ()
 orderingWithoutDiningMode = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -243,15 +208,8 @@ orderingWithoutDiningMode = script do
 -- Expected Result: Shopping cart should remain empty
 orderingWithInvalidItems : Script ()
 orderingWithInvalidItems = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -276,15 +234,8 @@ orderingWithInvalidItems = script do
 -- Expected Result: Discount percentage should remain as 1.0
 orderingWithInvalidDiscounts : Script ()
 orderingWithInvalidDiscounts = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -319,15 +270,8 @@ orderingWithInvalidDiscounts = script do
 -- Expected Result: An exception should be raised by an assertion. 
 orderingWithoutSufficientMoney : Script ()
 orderingWithoutSufficientMoney = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -369,15 +313,8 @@ orderingWithoutSufficientMoney = script do
 -- Expected Result: An exception should be raised by an assertion. 
 orderingWithoutItemsInShoppingCart : Script ()
 orderingWithoutItemsInShoppingCart = script do 
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
@@ -396,15 +333,8 @@ orderingWithoutItemsInShoppingCart = script do
 -- Unhappy Path Testing with nonconsuming choice CheckOrderInfo
 restaurantAddsItemsAndDiscountsTestScript: Script() 
 restaurantAddsItemsAndDiscountsTestScript = script do
-    -- Intialization of contract, setup users and empty contract
-    testParties@TestParties{..} <- setupUsers "alice" "mcdonalds"
-    aliceOrderId <- setupEmptyOrder customer restaurant
-
-    -- Initialization of Menu Items
-    menuItems <- setupInventory customer restaurant
-    
-    -- Initialization of Discounts
-    discounts <- setupDiscounts customer restaurant 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
     
     -- Customer starts the order
     aliceOrderId <- submit customer do 
