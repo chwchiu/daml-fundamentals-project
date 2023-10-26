@@ -8,9 +8,9 @@
 This is an application to order food at a fast food restaurant built in Daml.
 
 ### I. Overview 
-This project was created by using the `creat-daml-app` template. 
+This project was created by using the `empty-skeleton` template. 
 
-Proposer can create a ProjectProposal contract. Evaluator can exercise ProposerAccomplishments to confirm if the proposer is ready to take on the new project. Evaluator can either Reject or Approve the proposal. Upon getting rejected, proposer can exercise Revise to re-propose the project with updated details. Upon getting approved, a Project contract is created, which then evaluator can Evaluate to create an Accomplishmen contract with, if the Project contract is considered ready to be published.
+There are 2 parties, the customer and the restaurant. The customer and restaurant can interact with each other to order and serve fast food. The restaruant can choose to accept or reject orders. The customer can also choose between dining modes, items and discounts they want to apply. 
 
 
 ### II. Workflow
@@ -24,8 +24,6 @@ Proposer can create a ProjectProposal contract. Evaluator can exercise ProposerA
   8. Customer exercises PickUp order. Error if restaurant has not served it, fine otherwise. 
 
 ### III. Challenge(s)
-* `controller ... can` syntax causes warning in Daml 2.0+. The code itself does not cause any issues/errors in 2.5.0 but according to the warning, the syntax will be deprecated in the future versions of Daml. More information [here](https://docs.daml.com/daml/reference/choices.html#daml-ref-controller-can-deprecation).
-* The new controller syntax requires a controller to be an observer first before they can exercise a choice, otherwise it'll throw an error: "Attempt to fetch or exercise a contract not visible to the committer." For more information, check out [this post](https://discuss.daml.com/t/error-attempt-to-fetch-or-exercise-a-contract-not-visible-to-the-committer/1304/1) on the Daml Forum.
 * The project was created by using `empty-skeleton` and the following was removed from `daml.yaml`:
 ```
 sandbox-options:

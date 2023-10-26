@@ -4,99 +4,25 @@ import Setup
 import Main
 import Daml.Script
 
--- Happy Path Testing with no discounts and 1 item
--- Expected Result:  Order Status of Order contract should be "Completed"
-noDiscountOneItem: Script() 
-noDiscountOneItem = script do
-    -- Intialization of users, contract, menuItems and discounts
-    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
+{-
+    1 Full Scenario 
+        + fullWorkflow : customer can succesfully add discounts, items, dining mode, and take the order after the restaurant decides to take and serve the order. 
+    3 Happy Path Tests
+        + noDiscountOneItem: no discount added, can successfully pass the rest of the workflow
+        + oneDiscountOneItem : with one item and one discount, can successfully pass the rest of the workflow
+        + rejectedOrder : the restaurant can successfully reject the customer's order
+    7 Unhappy Path Tests
+        + orderingWithoutStartingOrder : exception is raised by an assertion when customer tries to order without going throught he first two steps fo the workflow
+        + orderingWithoutDiningMode : exception is raised by an assertion when customer tries to pay without specifiying the dining mode
+        + orderingWithInvalidItems : order has an empty shopping cart when invalid items are added to the cart
+        + orderingWithInvalidDiscounts : order still has a 1.0 discount when invalid discounts are applied
+        + orderingWithoutSufficientMoney : exception is raised by an assertion when you pay with too little money for the order
+        + orderingWithoutItemsInShoppingCart : exception is raised by an assertion when you try to order with an empty shopping cart
+        + restaurantAddsItemsAndDiscountsTestScript : checkOrderInfo being tested to verify the orderInfo of a contract
     
-    -- Customer starts the order
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId StartOrder
-    
-    -- Restaurant decides to start taking the order
-    aliceOrderId <- submit restaurant do 
-        exerciseCmd aliceOrderId TakeOrder
+-}
 
-    -- Customer begins by adding items to the shopping cart
-    let 
-        burger = MealItem with name = "Burger", amount = 5
-        orderList = [burger]
-
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId (AddItems orderList)
-    
-    -- Customer chooses dining mode, either Dine In or Take out
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId (AddDiningMode "Dine In")
-
-    -- Customer then pays for the order 
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
-    
-    -- Restaurant serves order
-    aliceOrderId <- submit restaurant do 
-        exerciseCmd aliceOrderId ServeOrder
-
-    -- Customer picks up order
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId PickUpOrder
-
-    return ()
-
--- Happy Path Testing with 1 discount and 3 items
--- Expected Result:  Order Status of Order contract should be "Completed"
-oneDiscountThreeItems: Script() 
-oneDiscountThreeItems = script do
-    -- Intialization of users, contract, menuItems and discounts
-    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
-
-    -- Customer starts the order
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId StartOrder
-    
-    -- Restaurant decides to start taking the order
-    aliceOrderId <- submit restaurant do 
-        exerciseCmd aliceOrderId TakeOrder
-
-    -- Customer begins by adding items to the shopping cart
-    let 
-        burger = MealItem with name = "Burger", amount = 1
-        soda = MealItem with name = "Soda", amount = 3
-        fries = MealItem with name ="Fries", amount = 5
-        orderList = [burger, soda, fries]
-
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId (AddItems orderList)
-
-    -- Customer then applies discount codes
-    let 
-        christmasDiscount = "CHRISTMAS"
-        discountList = [christmasDiscount]
-    
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId (AddDiscount discountList)
-    
-    -- Customer chooses dining mode, either Dine In or Take out
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
-
-    -- Customer then pays for the order 
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
-    
-    -- Restaurant serves order
-    aliceOrderId <- submit restaurant do 
-        exerciseCmd aliceOrderId ServeOrder
-
-    -- Customer picks up order
-    aliceOrderId <- submit customer do 
-        exerciseCmd aliceOrderId PickUpOrder
-
-    return ()
-
--- Happy Path Testing full workflow scenario
+-- Full workflow
 -- Expected Result:  Order Status of Order contract should be "Completed"
 fullWorkFlow: Script() 
 fullWorkFlow = script do
@@ -144,6 +70,113 @@ fullWorkFlow = script do
     -- Customer picks up order
     aliceOrderId <- submit customer do 
         exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Happy Path Testing with no discounts and 1 item
+-- Expected Result:  Order Status of Order contract should be "Completed", shopping cart 1 item, and discount 1.0
+noDiscountOneItem: Script() 
+noDiscountOneItem = script do
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
+    
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 5
+        orderList = [burger]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+    
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Dine In")
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+    
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId ServeOrder
+
+    -- Customer picks up order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Happy Path Testing with 1 discounts and 1 items 
+-- Expected Result: Discount should be 0.5, shopping cart with 1 item, and status completed
+oneDiscountOneItem: Script ()
+oneDiscountOneItem = script do 
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
+
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId TakeOrder
+
+    -- Customer begins by adding items to the shopping cart
+    let 
+        burger = MealItem with name = "Burger", amount = 1
+        orderList = [burger]
+
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddItems orderList)
+
+    -- Customer then applies discount codes
+    let 
+        christmasDiscount = "CHRISTMAS"
+        discountList = [christmasDiscount]
+    
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiscount discountList)
+    
+    -- Customer chooses dining mode, either Dine In or Take out
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId (AddDiningMode "Take Out")
+
+    -- Customer then pays for the order 
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PayOrder with amount = 1000.0
+    
+    -- Restaurant serves order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId ServeOrder
+
+    -- Customer picks up order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId PickUpOrder
+
+    return ()
+
+-- Happy Path Testing with restaurant rejecting the customer's order request
+-- Expected Result:  Order Status of Order contract should be "Rejected"
+rejectedOrder: Script() 
+rejectedOrder = script do
+    -- Intialization of users, contract, menuItems and discounts
+    (testParties@TestParties{..}, aliceOrderId, menuItems, discounts) <- setupTestingEnvironment
+
+    -- Customer starts the order
+    aliceOrderId <- submit customer do 
+        exerciseCmd aliceOrderId StartOrder
+    
+    -- Restaurant decides to start taking the order
+    aliceOrderId <- submit restaurant do 
+        exerciseCmd aliceOrderId RejectOrder
 
     return ()
 

@@ -58,6 +58,23 @@ template Order
                         orderInfo = newOrderInfo
                         ..
         
+        -- RejectOrder will change the status of the order to "Rejected", which is used when the restaurant does not want to take the customer's order
+        choice RejectOrder : ContractId Order
+            controller restaurant 
+                do
+                    -- Assert that the status of the order is Awaiting
+                    assertMsg "The order status must be Awaiting" (orderInfo.orderStatus == "Awaiting")
+
+                    let newOrderInfo = OrderInfo with
+                            shoppingCart = orderInfo.shoppingCart
+                            orderStatus = "Rejected"
+                            diningMode = orderInfo.diningMode
+                            discount = orderInfo.discount
+
+                    create Order with 
+                        orderInfo = newOrderInfo
+                        ..
+                    
         -- AddItems will add items that exist in the menu to the shopping cart, otherwise it will leave it out. 
         choice AddItems : ContractId Order
             with 
